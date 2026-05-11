@@ -1,13 +1,7 @@
 # Burp Suite Web Application Testing Lab
 **Web App Pentesting | Traffic Interception | SQLi | XSS | Defender Analysis**
 
-> A hands-on web application penetration testing lab using Burp Suite Community Edition to intercept HTTP traffic and exploit SQL Injection and Cross-Site Scripting (XSS) vulnerabilities in DVWA — simulating techniques used by real attackers and mapping them to MITRE ATT&CK.
-
----
-
-## Why This Matters
-
-Web application attacks are among the most common attack vectors in the wild. SQL Injection and XSS consistently appear in the OWASP Top 10. This lab demonstrates how attackers intercept and manipulate HTTP requests, bypass authentication, extract database contents, and inject malicious scripts — paired with the controls that prevent each attack.
+> Hands-on web application penetration testing lab using Burp Suite Community Edition to intercept HTTP traffic and exploit SQL Injection and XSS vulnerabilities in DVWA — mapping techniques to MITRE ATT&CK.
 
 ---
 
@@ -15,11 +9,11 @@ Web application attacks are among the most common attack vectors in the wild. SQ
 
 | Component | Details |
 |---|---|
-| **Testing Tool** | Burp Suite Community Edition (pre-installed on Kali) |
-| **Target Application** | DVWA (Damn Vulnerable Web Application) |
+| **Testing Tool** | Burp Suite Community Edition |
+| **Target** | DVWA (Damn Vulnerable Web Application) |
 | **Platform** | Kali Linux (VM) |
 | **DVWA URL** | http://127.0.0.1:42001 |
-| **Network** | Localhost only — isolated, no external exposure |
+| **Network** | Localhost only — isolated |
 
 > ⚠️ All testing performed against a locally hosted intentionally vulnerable application. No live systems were targeted.
 
@@ -28,61 +22,52 @@ Web application attacks are among the most common attack vectors in the wild. SQ
 ## Objectives
 
 - Configure Burp Suite as a proxy to intercept browser traffic
-- Capture and inspect raw HTTP requests and responses
-- Exploit SQL Injection to bypass authentication and extract data
-- Exploit Reflected XSS to inject and execute a script
-- Document findings and map to MITRE ATT&CK
-- Identify developer and SOC controls that prevent each attack
+- Capture and inspect raw HTTP requests
+- Exploit SQL Injection to extract database contents
+- Exploit Reflected XSS to execute injected JavaScript
+- Map findings to MITRE ATT&CK and document defender controls
 
 ---
 
 ## Setup
 
-### Install & Start DVWA on Kali
+### Start DVWA
 ```bash
 sudo apt install dvwa -y
 sudo dvwa-start
 ```
-Open `http://127.0.0.1:42001` in Firefox on Kali.
+Open `http://127.0.0.1:42001` → login: `admin / password` → set Security Level to **Low**.
 
-Default credentials:
-- **Username:** admin
-- **Password:** password
-
-Set DVWA Security Level to **Low** (DVWA Security tab).
-
-### Configure Burp Suite Proxy
-1. Open Burp Suite Community → **Proxy > Intercept**
-2. In Firefox: Settings → Network Settings → Manual proxy → `127.0.0.1:8080`
-3. Browse to DVWA — Burp will intercept all requests
+### Configure Burp Proxy
+1. Burp Suite → **Proxy > Intercept** → Intercept ON
+2. Firefox → Settings → Network Settings → Manual proxy → `127.0.0.1:8080`
 
 ---
 
 ## Attack 1 — SQL Injection
 
 ### What it is
-SQL Injection occurs when user input is inserted directly into a database query without sanitisation, allowing an attacker to manipulate the query logic.
+User input inserted directly into a SQL query without sanitisation — attacker manipulates query logic to extract data.
 
 ### Steps
-1. In DVWA, go to **SQL Injection**
-2. In Burp Suite, enable **Intercept**
-3. Submit any ID in the DVWA input field (e.g. `1`)
-4. In Burp, observe the raw GET request
-5. Forward the request, then test the following payloads directly in the DVWA input:
+1. DVWA → **SQL Injection**
+2. Burp Intercept ON → submit `1` → observe raw GET request in Burp → Forward
+
+![Burp Intercept](Screenshots/http%20inspect.png)
+
+3. Intercept OFF → test payloads in DVWA input:
 
 ```sql
--- Bypass: always-true condition
+-- Always-true condition
 ' OR 1=1#
 
--- Extract all users from the database
+-- Extract all users
 1' OR '1'='1' --
 ```
 
 ### Result
-- All 5 user records returned: admin, Gordon Brown, Hack Me, Pablo Picasso, Bob Smith
-- Input was injected directly into the SQL query with no sanitisation
+All 5 user records returned: admin, Gordon Brown, Hack Me, Pablo Picasso, Bob Smith — no sanitisation applied.
 
-![Burp Intercept](Screenshots/http%20inspect.png)
 ![SQLi Payload](Screenshots/sqli.png)
 ![SQLi Results](Screenshots/sqli%20results.png)
 
@@ -91,21 +76,18 @@ SQL Injection occurs when user input is inserted directly into a database query 
 ## Attack 2 — Reflected XSS
 
 ### What it is
-Cross-Site Scripting (XSS) occurs when unsanitised user input is reflected back in the HTML response and executed as JavaScript in the victim's browser.
+Unsanitised user input reflected back in the HTML response and executed as JavaScript in the victim's browser.
 
 ### Steps
-1. In DVWA, go to **XSS (Reflected)**
-2. Submit the following payload in the name field:
+1. DVWA → **XSS (Reflected)**
+2. Submit in the name field:
 
 ```html
 <script>alert('XSS')</script>
 ```
 
-3. Script executes in the browser immediately on page load
-
 ### Result
-- Alert box fired confirming JavaScript execution
-- Input was reflected in the page with no encoding or sanitisation
+Alert box fired — script executed immediately with no encoding or sanitisation.
 
 ![XSS Payload](Screenshots/xss.png)
 ![XSS Alert](Screenshots/xss%20results.png)
@@ -116,8 +98,8 @@ Cross-Site Scripting (XSS) occurs when unsanitised user input is reflected back 
 
 | Attack | Vulnerability | Location | Severity | Result |
 |---|---|---|---|---|
-| SQL Injection | Unsanitised SQL query | DVWA `/vulnerabilities/sqli/` | Critical | All user credentials extracted |
-| Reflected XSS | Unsanitised input reflected in HTML | DVWA `/vulnerabilities/xss_r/` | High | Script executed in browser |
+| SQL Injection | Unsanitised SQL query | `/vulnerabilities/sqli/` | Critical | All user credentials extracted |
+| Reflected XSS | Unsanitised input reflected in HTML | `/vulnerabilities/xss_r/` | High | Script executed in browser |
 
 ---
 
@@ -129,7 +111,7 @@ Cross-Site Scripting (XSS) occurs when unsanitised user input is reflected back 
 | Credential Access | Exploitation for Credential Access | T1212 |
 | Credential Access | Unsecured Credentials in Database | T1552.001 |
 | Collection | Data from Information Repositories | T1213 |
-| Execution | XSS — Client-Side Script Execution | T1059.007 |
+| Execution | Client-Side Script Execution (XSS) | T1059.007 |
 | Collection | Session Hijacking via Cookie Theft | T1539 |
 
 ---
@@ -139,28 +121,28 @@ Cross-Site Scripting (XSS) occurs when unsanitised user input is reflected back 
 ### SQL Injection — Prevention
 | Control | How It Helps |
 |---|---|
-| **Parameterised Queries / Prepared Statements** | Input never concatenated into SQL — eliminates SQLi entirely |
+| **Parameterised Queries** | Input never concatenated into SQL — eliminates SQLi entirely |
 | **Input Validation** | Reject special characters (`'`, `--`, `;`) at the application layer |
-| **Least Privilege DB accounts** | App DB user should only have SELECT on required tables — not read `users` |
-| **WAF (Web Application Firewall)** | Detects and blocks SQLi patterns in HTTP requests |
-| **Error Handling** | Never return raw SQL errors to the user — reveals DB structure |
+| **Least Privilege DB accounts** | App DB user only has SELECT on required tables |
+| **WAF** | Detects and blocks SQLi patterns in HTTP requests |
+| **Error Handling** | Never return raw SQL errors — reveals DB structure |
 
 ### XSS — Prevention
 | Control | How It Helps |
 |---|---|
 | **Output Encoding** | Encode `<`, `>`, `"`, `'` before rendering user input as HTML |
-| **Content Security Policy (CSP)** | HTTP header that blocks inline script execution |
-| **HttpOnly Cookie Flag** | Prevents JavaScript from reading session cookies — blocks cookie theft |
+| **Content Security Policy (CSP)** | HTTP header blocking inline script execution |
+| **HttpOnly Cookie Flag** | Prevents JavaScript from reading session cookies |
 | **Input Sanitisation** | Strip or reject HTML tags from user input |
-| **WAF** | Detects `<script>` patterns and XSS payloads in HTTP parameters |
+| **WAF** | Detects `<script>` patterns in HTTP parameters |
 
 ### SOC Detection
 | Signal | Detection Logic |
 |---|---|
-| **SQLi patterns in logs** | Web server logs containing `'`, `UNION SELECT`, `OR 1=1` in URL params |
-| **XSS patterns in logs** | `<script>`, `alert(`, `document.cookie` in HTTP request params |
-| **Abnormal response sizes** | SQLi dumping full tables returns much larger responses than normal |
-| **WAF alerts** | ModSecurity / AWS WAF rules fire on both attack signatures |
+| **SQLi in logs** | URL params containing `'`, `UNION SELECT`, `OR 1=1` |
+| **XSS in logs** | `<script>`, `alert(`, `document.cookie` in HTTP params |
+| **Abnormal response sizes** | Full table dumps return much larger responses than normal |
+| **WAF alerts** | ModSecurity / AWS WAF rules fire on both signatures |
 
 ---
 
@@ -178,8 +160,7 @@ Cross-Site Scripting (XSS) occurs when unsanitised user input is reflected back 
 - [x] DVWA installed and running on Kali
 - [x] Burp Suite proxy configured
 - [x] HTTP request intercepted and inspected
-- [x] SQL Injection payloads tested — all 5 users extracted
+- [x] SQL Injection — all 5 users extracted
 - [x] XSS payload executed — alert confirmed
 - [x] Screenshots captured and pushed
-- [x] Findings table completed
-- [x] MITRE ATT&CK mapping finalised
+- [x] Findings documented and MITRE mapped
