@@ -18,7 +18,7 @@ Web application attacks are among the most common attack vectors in the wild. SQ
 | **Testing Tool** | Burp Suite Community Edition (pre-installed on Kali) |
 | **Target Application** | DVWA (Damn Vulnerable Web Application) |
 | **Platform** | Kali Linux (VM) |
-| **DVWA URL** | http://127.0.0.1/dvwa |
+| **DVWA URL** | http://127.0.0.1:42001 |
 | **Network** | Localhost only — isolated, no external exposure |
 
 > ⚠️ All testing performed against a locally hosted intentionally vulnerable application. No live systems were targeted.
@@ -43,7 +43,7 @@ Web application attacks are among the most common attack vectors in the wild. SQ
 sudo apt install dvwa -y
 sudo dvwa-start
 ```
-Open `http://127.0.0.1/dvwa` in Firefox on Kali.
+Open `http://127.0.0.1:42001` in Firefox on Kali.
 
 Default credentials:
 - **Username:** admin
@@ -72,49 +72,43 @@ SQL Injection occurs when user input is inserted directly into a database query 
 
 ```sql
 -- Bypass: always-true condition
-1' OR '1'='1
+' OR 1=1#
 
 -- Extract all users from the database
 1' OR '1'='1' --
-
--- UNION-based: extract database version
-1' UNION SELECT null, version() --
-
--- UNION-based: extract all usernames and passwords
-1' UNION SELECT user, password FROM users --
 ```
 
-### Expected Result
-- Authentication bypass: all user records returned
-- Database version disclosed
-- Plaintext (MD5-hashed) credentials extracted from the `users` table
+### Result
+- All 5 user records returned: admin, Gordon Brown, Hack Me, Pablo Picasso, Bob Smith
+- Input was injected directly into the SQL query with no sanitisation
+
+![Burp Intercept](Screenshots/http%20inspect.png)
+![SQLi Payload](Screenshots/sqli.png)
+![SQLi Results](Screenshots/sqli%20results.png)
 
 ---
 
 ## Attack 2 — Reflected XSS
 
 ### What it is
-Cross-Site Scripting (XSS) occurs when unsanitised user input is reflected back in the HTML response and executed as JavaScript in the victim’s browser.
+Cross-Site Scripting (XSS) occurs when unsanitised user input is reflected back in the HTML response and executed as JavaScript in the victim's browser.
 
 ### Steps
 1. In DVWA, go to **XSS (Reflected)**
-2. In Burp Suite, enable **Intercept**
-3. Submit the following payload in the name field:
+2. Submit the following payload in the name field:
 
 ```html
-<!-- Basic alert pop-up (proof of concept) -->
 <script>alert('XSS')</script>
-
-<!-- Cookie theft simulation -->
-<script>alert(document.cookie)</script>
 ```
 
-4. Observe the intercepted GET request in Burp — note the payload in the URL parameter
-5. Forward the request — the script executes in the browser
+3. Script executes in the browser immediately on page load
 
-### Expected Result
-- Alert box appears confirming script execution
-- Cookie value displayed — demonstrating session hijack potential
+### Result
+- Alert box fired confirming JavaScript execution
+- Input was reflected in the page with no encoding or sanitisation
+
+![XSS Payload](Screenshots/xss.png)
+![XSS Alert](Screenshots/xss%20results.png)
 
 ---
 
@@ -123,7 +117,7 @@ Cross-Site Scripting (XSS) occurs when unsanitised user input is reflected back 
 | Attack | Vulnerability | Location | Severity | Result |
 |---|---|---|---|---|
 | SQL Injection | Unsanitised SQL query | DVWA `/vulnerabilities/sqli/` | Critical | All user credentials extracted |
-| Reflected XSS | Unsanitised input reflected in HTML | DVWA `/vulnerabilities/xss_r/` | High | Script executed, cookie exposed |
+| Reflected XSS | Unsanitised input reflected in HTML | DVWA `/vulnerabilities/xss_r/` | High | Script executed in browser |
 
 ---
 
@@ -137,19 +131,6 @@ Cross-Site Scripting (XSS) occurs when unsanitised user input is reflected back 
 | Collection | Data from Information Repositories | T1213 |
 | Execution | XSS — Client-Side Script Execution | T1059.007 |
 | Collection | Session Hijacking via Cookie Theft | T1539 |
-
----
-
-## Screenshots
-
-```
-screenshots/
-├── 01-burp-intercept.png        # Burp Suite intercepting a DVWA HTTP request
-├── 02-sqli-payload.png          # SQLi payload in DVWA input field
-├── 03-sqli-results.png          # Extracted user credentials from database
-├── 04-xss-payload.png           # XSS payload submitted in name field
-└── 05-xss-alert.png             # Alert box executing in browser
-```
 
 ---
 
@@ -194,11 +175,11 @@ screenshots/
 
 ## Status
 
-- [ ] DVWA installed and running on Kali
-- [ ] Burp Suite proxy configured
-- [ ] HTTP request intercepted and inspected
-- [ ] SQL Injection payloads tested — credentials extracted
-- [ ] XSS payload executed — cookie exposed
-- [ ] Screenshots captured and pushed
-- [ ] Findings table completed
-- [ ] MITRE ATT&CK mapping finalised
+- [x] DVWA installed and running on Kali
+- [x] Burp Suite proxy configured
+- [x] HTTP request intercepted and inspected
+- [x] SQL Injection payloads tested — all 5 users extracted
+- [x] XSS payload executed — alert confirmed
+- [x] Screenshots captured and pushed
+- [x] Findings table completed
+- [x] MITRE ATT&CK mapping finalised
